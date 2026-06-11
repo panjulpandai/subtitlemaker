@@ -71,8 +71,8 @@ Model used: `gemini-2.0-flash`
 | Cost | Free tier | Pay-per-use | Free tier |
 | Speed | Very fast | Fast | Fast |
 | Accuracy (JA) | ★★★★☆ | ★★★★★ | ★★★★☆ |
-| Max file (per chunk) | 25 MB | 25 MB | ~1 hour |
-| Chunking | Auto | Auto | Not needed |
+| Max file (per chunk) | any sizes | any sizes | any sizes |
+| Chunking | 10 minutes | 10 minutes | 10 minutes |
 
 ---
 
