@@ -19,10 +19,14 @@ h1{font-size:22px;font-weight:600;letter-spacing:-.3px}
 .logo{display:flex;align-items:center;gap:10px;margin-bottom:6px}
 .logo-ic{width:36px;height:36px;background:var(--acc);border-radius:8px;display:flex;align-items:center;justify-content:center}
 .logo-ic svg{width:20px;height:20px;fill:#fff}
-header{margin-bottom:2.5rem}
+header{margin-bottom:2.5rem;display:flex;justify-content:space-between;align-items:flex-start}
+.header-left{}
+.lang-sw{display:flex;gap:4px;align-items:center;margin-top:4px}
+.lang-btn{padding:4px 10px;border-radius:var(--rs);border:1px solid var(--bord);background:transparent;color:var(--mute);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;letter-spacing:.04em}
+.lang-btn.on{background:var(--acc-d);border-color:var(--acc);color:var(--txt)}
 .card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:1rem}
 .card-ttl{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin-bottom:12px}
-.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
 .tab{padding:5px 12px;border-radius:var(--rs);border:1px solid var(--bord);background:transparent;color:var(--mute);font-size:13px;cursor:pointer;transition:all .15s}
 .tab.on{background:var(--acc-d);border-color:var(--acc);color:var(--txt)}
 .row{display:flex;gap:8px;align-items:center}
@@ -41,7 +45,7 @@ input:focus{border-color:var(--acc)}
 .srow{display:flex;gap:10px;margin-bottom:1rem;flex-wrap:wrap}
 .sg{display:flex;flex-direction:column;gap:5px;flex:1;min-width:140px}
 .sl{font-size:12px;color:var(--mute);font-weight:500}
-select{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs);color:var(--txt);font-size:14px;padding:8px 10px;outline:none;cursor:pointer;transition:border-color .15s}
+select{background:var(--surf);border:1px solid var(--bord);border-radius:var(--rs);color:var(--txt);font-size:14px;padding:8px 10px;outline:none;cursor:pointer;transition:border-color .15s;width:100%}
 select:focus{border-color:var(--acc)}
 .chk{display:flex;align-items:center;gap:8px;font-size:14px;margin-top:4px}
 input[type=checkbox]{width:16px;height:16px;accent-color:var(--acc);cursor:pointer}
@@ -86,7 +90,7 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--acc);cursor:point
 .st{font-size:12px;color:var(--acc);font-family:var(--mono);min-width:190px;white-space:nowrap;padding-top:2px}
 .sx{font-size:14px;line-height:1.5;flex:1}
 .sx:focus{outline:1px solid var(--acc-d);border-radius:3px}
-.err{background:var(--red-d);border:1px solid var(--red);border-radius:var(--r);padding:1rem 1.5rem;margin-bottom:1rem;font-size:14px;color:var(--red);display:none}
+.err{background:var(--red-d);border:1px solid var(--red);border-radius:var(--r);padding:1rem 1.5rem;margin-bottom:1rem;font-size:14px;color:var(--red);display:none;white-space:pre-line}
 .wave{display:flex;align-items:center;gap:3px;height:20px}
 .wb{width:3px;background:var(--acc);border-radius:99px;animation:wv .8s ease-in-out infinite}
 .wb:nth-child(2){animation-delay:.1s}.wb:nth-child(3){animation-delay:.2s}
@@ -99,70 +103,77 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--acc);cursor:point
 <div class="wrap">
 
 <header>
-  <div class="logo">
-    <div class="logo-ic"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 100 18A9 9 0 0012 3zm-1 13V8l6 4-6 4z"/></svg></div>
-    <h1>Subtitle Maker</h1>
+  <div class="header-left">
+    <div class="logo">
+      <div class="logo-ic"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 100 18A9 9 0 0012 3zm-1 13V8l6 4-6 4z"/></svg></div>
+      <h1 data-i="appTitle">Subtitle Maker</h1>
+    </div>
+    <p class="sub" data-i="appSub">Speech-to-text → SRT · Japanese, English, mixed · runs in your browser</p>
   </div>
-  <p class="sub">Speech-to-text → SRT · Japanese, English, mixed · runs in your browser</p>
+  <div class="lang-sw">
+    <button class="lang-btn on" onclick="setUiLang('en')" id="ul-en">EN</button>
+    <button class="lang-btn" onclick="setUiLang('ja')" id="ul-ja">日本語</button>
+  </div>
 </header>
 
 <div class="card">
-  <div class="card-ttl">API provider</div>
+  <div class="card-ttl" data-i="providerLabel">API Provider</div>
   <div class="tabs">
     <button class="tab" onclick="setProv('openai')" id="t-oa">OpenAI Whisper</button>
     <button class="tab on" onclick="setProv('groq')" id="t-gr">Groq (free tier)</button>
+    <button class="tab" onclick="setProv('gemini')" id="t-gm">Google Gemini</button>
   </div>
   <div class="row">
-    <input type="password" id="akey" placeholder="Paste your API key here" autocomplete="off"/>
-    <button class="btn btn-o" onclick="toggleVis()" style="padding:9px 14px;white-space:nowrap" id="visbtn">Show</button>
+    <input type="password" id="akey" data-i-placeholder="keyPlaceholder" placeholder="Paste your API key here" autocomplete="off"/>
+    <button class="btn btn-o" onclick="toggleVis()" style="padding:9px 14px;white-space:nowrap" id="visbtn" data-i="showBtn">Show</button>
   </div>
-  <p class="hint" id="ahint">Get a free key at <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a> · stays in this tab only</p>
+  <p class="hint" id="ahint"></p>
 </div>
 
 <div class="drop" id="drop" onclick="document.getElementById('fi').click()">
   <div class="drop-ic">🎵</div>
-  <div class="drop-ttl">Drop your audio or video file here</div>
-  <div class="drop-sub">MP3 · WAV · MP4 · M4A · AAC · OGG · FLAC · WebM — any size</div>
+  <div class="drop-ttl" data-i="dropTitle">Drop your audio or video file here</div>
+  <div class="drop-sub" data-i="dropSub">MP3 · WAV · MP4 · M4A · AAC · OGG · FLAC · WebM — any size</div>
 </div>
 <input type="file" id="fi" accept="audio/*,video/*">
 
 <div class="srow">
-  <div class="sg"><span class="sl">Language</span>
+  <div class="sg"><span class="sl" data-i="langLabel">Language</span>
     <select id="lang">
-      <option value="">Auto-detect</option>
-      <option value="ja">Japanese</option>
-      <option value="en">English</option>
-      <option value="zh">Chinese</option>
-      <option value="ko">Korean</option>
+      <option value="" data-i="langAuto">Auto-detect</option>
+      <option value="ja" data-i="langJa">Japanese</option>
+      <option value="en" data-i="langEn">English</option>
+      <option value="zh" data-i="langZh">Chinese</option>
+      <option value="ko" data-i="langKo">Korean</option>
     </select>
   </div>
-  <div class="sg"><span class="sl">Compress to</span>
+  <div class="sg" id="sg-compress"><span class="sl" data-i="compressLabel">Compress to</span>
     <select id="qual">
-      <option value="16000">16 kHz mono (smallest)</option>
-      <option value="22050" selected>22 kHz mono (recommended)</option>
-      <option value="44100">44 kHz mono (high quality)</option>
-      <option value="0">No compression</option>
+      <option value="16000" data-i="q16k">16 kHz mono (smallest)</option>
+      <option value="22050" selected data-i="q22k">22 kHz mono (recommended)</option>
+      <option value="44100" data-i="q44k">44 kHz mono (high quality)</option>
+      <option value="0" data-i="qNone">No compression</option>
     </select>
   </div>
-  <div class="sg"><span class="sl">Chunk size</span>
+  <div class="sg" id="sg-chunk"><span class="sl" data-i="chunkLabel">Chunk size</span>
     <select id="csec">
-      <option value="300">5 minutes</option>
-      <option value="600" selected>10 minutes</option>
-      <option value="900">15 minutes</option>
-      <option value="1200">20 minutes</option>
+      <option value="300" data-i="c5m">5 minutes</option>
+      <option value="600" selected data-i="c10m">10 minutes</option>
+      <option value="900" data-i="c15m">15 minutes</option>
+      <option value="1200" data-i="c20m">20 minutes</option>
     </select>
   </div>
 </div>
 <div class="srow">
-  <label class="chk"><input type="checkbox" id="edchk" checked> Allow editing in preview</label>
+  <label class="chk"><input type="checkbox" id="edchk" checked> <span data-i="editLabel">Allow editing in preview</span></label>
 </div>
 
 <div class="brow">
   <button class="btn btn-p" id="goBtn" onclick="go()" disabled>
     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-    Start transcription
+    <span data-i="startBtn">Start transcription</span>
   </button>
-  <button class="btn btn-o" id="stopBtn" onclick="doStop()" style="display:none">⏹ Stop</button>
+  <button class="btn btn-o" id="stopBtn" onclick="doStop()" style="display:none"><span data-i="stopBtn">⏹ Stop</span></button>
 </div>
 
 <div class="prog-card" id="pc">
@@ -175,10 +186,10 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--acc);cursor:point
   </div>
   <div class="prog-bg"><div class="prog-fill" id="pfill"></div></div>
   <div class="steps">
-    <div class="step" id="s1"><div class="dot"></div>Compress</div>
-    <div class="step" id="s2"><div class="dot"></div>Chunk</div>
-    <div class="step" id="s3"><div class="dot"></div>Transcribe</div>
-    <div class="step" id="s4"><div class="dot"></div>Export</div>
+    <div class="step" id="s1"><div class="dot"></div><span data-i="stepCompress">Compress</span></div>
+    <div class="step" id="s2"><div class="dot"></div><span data-i="stepChunk">Chunk</span></div>
+    <div class="step" id="s3"><div class="dot"></div><span data-i="stepTranscribe">Transcribe</span></div>
+    <div class="step" id="s4"><div class="dot"></div><span data-i="stepExport">Export</span></div>
   </div>
   <div class="cinfo" id="cinfo"></div>
 </div>
@@ -192,65 +203,230 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--acc);cursor:point
       <span style="font-size:13px;color:var(--mute)" id="scnt"></span>
     </div>
     <div class="res-acts">
-      <button class="btn btn-o" onclick="copySRT()" id="cpbtn">📋 Copy SRT</button>
-      <button class="btn btn-p" onclick="dlSRT()">⬇ Download .srt</button>
+      <button class="btn btn-o" onclick="copySRT()" id="cpbtn">📋 <span data-i="copyBtn">Copy SRT</span></button>
+      <button class="btn btn-p" onclick="dlSRT()">⬇ <span data-i="dlBtn">Download .srt</span></button>
     </div>
   </div>
   <div class="sbar">
-    <div class="stat"><div class="sv" id="zsegs">0</div><div class="sk">Segments</div></div>
-    <div class="stat"><div class="sv" id="zdur">0s</div><div class="sk">Duration</div></div>
-    <div class="stat"><div class="sv" id="zwds">0</div><div class="sk">Words</div></div>
-    <div class="stat"><div class="sv" id="zsz">0</div><div class="sk">SRT size</div></div>
+    <div class="stat"><div class="sv" id="zsegs">0</div><div class="sk" data-i="statSegs">Segments</div></div>
+    <div class="stat"><div class="sv" id="zdur">0s</div><div class="sk" data-i="statDur">Duration</div></div>
+    <div class="stat"><div class="sv" id="zwds">0</div><div class="sk" data-i="statWords">Words</div></div>
+    <div class="stat"><div class="sv" id="zsz">0</div><div class="sk" data-i="statSize">SRT size</div></div>
   </div>
   <div class="seg-list" id="sl"></div>
 </div>
 
 <script>
-// ─── state ───────────────────────────────────────────────────────────────────
-let prov = 'groq', selFile = null, killed = false;
+// ════════════════════════════════════════════════════════════════════════
+// i18n — bilingual strings (English / Japanese)
+// ════════════════════════════════════════════════════════════════════════
+const I18N = {
+  en: {
+    appTitle:      'Subtitle Maker',
+    appSub:        'Speech-to-text → SRT · Japanese, English, mixed · runs in your browser',
+    providerLabel: 'API Provider',
+    keyPlaceholder:'Paste your API key here',
+    showBtn:       'Show',
+    hideBtn:       'Hide',
+    dropTitle:     'Drop your audio or video file here',
+    dropSub:       'MP3 · WAV · MP4 · M4A · AAC · OGG · FLAC · WebM — any size',
+    langLabel:     'Language',
+    langAuto:      'Auto-detect',
+    langJa:        'Japanese',
+    langEn:        'English',
+    langZh:        'Chinese',
+    langKo:        'Korean',
+    compressLabel: 'Compress to',
+    q16k:          '16 kHz mono (smallest)',
+    q22k:          '22 kHz mono (recommended)',
+    q44k:          '44 kHz mono (high quality)',
+    qNone:         'No compression',
+    chunkLabel:    'Chunk size',
+    c5m:           '5 minutes',
+    c10m:          '10 minutes',
+    c15m:          '15 minutes',
+    c20m:          '20 minutes',
+    editLabel:     'Allow editing in preview',
+    startBtn:      'Start transcription',
+    stopBtn:       '⏹ Stop',
+    stepCompress:  'Compress',
+    stepChunk:     'Chunk',
+    stepTranscribe:'Transcribe',
+    stepExport:    'Export',
+    copyBtn:       'Copy SRT',
+    dlBtn:         'Download .srt',
+    statSegs:      'Segments',
+    statDur:       'Duration',
+    statWords:     'Words',
+    statSize:      'SRT size',
+    progPreparing: 'Preparing…',
+    progCompressing:'Compressing audio…',
+    progSplitting: 'Splitting into chunks…',
+    progTranscribing: (i,n) => `Transcribing chunk ${i} of ${n}…`,
+    progDone:      'Done!',
+    progStopped:   'Stopped.',
+    badgeDone:     '✓ Done',
+    badgeStopped:  '⏹ Stopped',
+    segments:      (n) => `${n} segment${n!==1?'s':''}`,
+    copied:        '✓ Copied!',
+    hintGroq:      'Get a free key at <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a> · fast & free tier · stays in this tab only',
+    hintOpenAI:    'Get a key at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a> · stays in this tab only',
+    hintGemini:    'Get a free key at <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a> · stays in this tab only',
+    errFileProtocol:'Cannot reach the API when opened from disk (file://).\nServe the file over HTTP — e.g. run:\n  npx serve .\nthen open http://localhost:3000',
+    errNetwork:    'Network request failed — check your internet connection.\nDetail: ',
+  },
+  ja: {
+    appTitle:      'Subtitle Maker',
+    appSub:        '音声→テキスト → SRT · 日本語・英語・混在対応 · ブラウザで完結',
+    providerLabel: 'APIプロバイダー',
+    keyPlaceholder:'APIキーを貼り付けてください',
+    showBtn:       '表示',
+    hideBtn:       '非表示',
+    dropTitle:     '音声・動画ファイルをドロップ',
+    dropSub:       'MP3・WAV・MP4・M4A・AAC・OGG・FLAC・WebM — サイズ無制限',
+    langLabel:     '言語',
+    langAuto:      '自動検出',
+    langJa:        '日本語',
+    langEn:        '英語',
+    langZh:        '中国語',
+    langKo:        '韓国語',
+    compressLabel: '圧縮設定',
+    q16k:          '16 kHz モノラル（最小）',
+    q22k:          '22 kHz モノラル（推奨）',
+    q44k:          '44 kHz モノラル（高品質）',
+    qNone:         '圧縮なし',
+    chunkLabel:    'チャンクサイズ',
+    c5m:           '5分',
+    c10m:          '10分',
+    c15m:          '15分',
+    c20m:          '20分',
+    editLabel:     'プレビューで編集を許可',
+    startBtn:      '文字起こし開始',
+    stopBtn:       '⏹ 停止',
+    stepCompress:  '圧縮',
+    stepChunk:     '分割',
+    stepTranscribe:'文字起こし',
+    stepExport:    'エクスポート',
+    copyBtn:       'SRTをコピー',
+    dlBtn:         '.srtをダウンロード',
+    statSegs:      'セグメント',
+    statDur:       '時間',
+    statWords:     '単語数',
+    statSize:      'SRTサイズ',
+    progPreparing: '準備中…',
+    progCompressing:'音声を圧縮中…',
+    progSplitting: 'チャンクに分割中…',
+    progTranscribing: (i,n) => `チャンク ${i}/${n} を文字起こし中…`,
+    progDone:      '完了！',
+    progStopped:   '停止しました。',
+    badgeDone:     '✓ 完了',
+    badgeStopped:  '⏹ 停止',
+    segments:      (n) => `${n} セグメント`,
+    copied:        '✓ コピーしました！',
+    hintGroq:      '無料キーを取得: <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a> · 高速・無料枠あり · このタブにのみ保存',
+    hintOpenAI:    'キーを取得: <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a> · このタブにのみ保存',
+    hintGemini:    '無料キーを取得: <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a> · このタブにのみ保存',
+    errFileProtocol:'ローカルファイル（file://）からAPIに接続できません。\nHTTPサーバー経由で開いてください。例:\n  npx serve .\nその後 http://localhost:3000 を開く',
+    errNetwork:    'ネットワークエラー — インターネット接続を確認してください。\n詳細: ',
+  }
+};
 
-// ─── provider ────────────────────────────────────────────────────────────────
-function setProv(p) {
-  prov = p;
-  document.getElementById('t-oa').className = 'tab'+(p==='openai'?' on':'');
-  document.getElementById('t-gr').className = 'tab'+(p==='groq'?' on':'');
-  document.getElementById('ahint').innerHTML = p==='openai'
-    ? 'Get a key at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a>'
-    : 'Get a free key at <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a> · fast & free tier';
+// ════════════════════════════════════════════════════════════════════════
+// State
+// ════════════════════════════════════════════════════════════════════════
+let prov = 'groq', selFile = null, killed = false, uiLang = 'en';
+
+// ════════════════════════════════════════════════════════════════════════
+// UI language switch
+// ════════════════════════════════════════════════════════════════════════
+function t(key, ...args) {
+  const v = I18N[uiLang][key];
+  return typeof v === 'function' ? v(...args) : (v ?? key);
 }
 
+function setUiLang(lang) {
+  uiLang = lang;
+  document.getElementById('ul-en').className = 'lang-btn' + (lang==='en' ? ' on' : '');
+  document.getElementById('ul-ja').className = 'lang-btn' + (lang==='ja' ? ' on' : '');
+  document.documentElement.lang = lang;
+  // Update all data-i elements
+  document.querySelectorAll('[data-i]').forEach(el => {
+    const key = el.getAttribute('data-i');
+    if (I18N[lang][key] && typeof I18N[lang][key] !== 'function') el.textContent = I18N[lang][key];
+  });
+  // Update all data-i-placeholder elements
+  document.querySelectorAll('[data-i-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i-placeholder');
+    if (I18N[lang][key]) el.placeholder = I18N[lang][key];
+  });
+  // Refresh provider hint
+  updateHint();
+  // Update show/hide button
+  const vis = document.getElementById('akey').type === 'text';
+  document.getElementById('visbtn').textContent = vis ? t('hideBtn') : t('showBtn');
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// Provider
+// ════════════════════════════════════════════════════════════════════════
+function setProv(p) {
+  prov = p;
+  ['oa','gr','gm'].forEach(id => document.getElementById('t-'+id).classList.remove('on'));
+  const map = {openai:'oa', groq:'gr', gemini:'gm'};
+  document.getElementById('t-'+map[p]).classList.add('on');
+
+  // Gemini doesn't need chunk size (handles long audio natively)
+  document.getElementById('sg-chunk').style.display = p === 'gemini' ? 'none' : '';
+  updateHint();
+}
+
+function updateHint() {
+  const hints = {openai:'hintOpenAI', groq:'hintGroq', gemini:'hintGemini'};
+  document.getElementById('ahint').innerHTML = t(hints[prov]);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// Key visibility
+// ════════════════════════════════════════════════════════════════════════
 function toggleVis() {
-  const el = document.getElementById('akey');
+  const el  = document.getElementById('akey');
   const btn = document.getElementById('visbtn');
-  if (el.type==='password') { el.type='text'; btn.textContent='Hide'; }
-  else { el.type='password'; btn.textContent='Show'; }
+  if (el.type === 'password') { el.type = 'text';     btn.textContent = t('hideBtn'); }
+  else                        { el.type = 'password'; btn.textContent = t('showBtn'); }
 }
 
 document.getElementById('akey').addEventListener('input', function() {
   document.getElementById('goBtn').disabled = !(this.value.trim() && selFile);
 });
 
-// ─── file select ─────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════
+// File select
+// ════════════════════════════════════════════════════════════════════════
 const dropEl = document.getElementById('drop');
 const fi = document.getElementById('fi');
-dropEl.addEventListener('dragover', e => { e.preventDefault(); dropEl.classList.add('over'); });
+dropEl.addEventListener('dragover',  e => { e.preventDefault(); dropEl.classList.add('over'); });
 dropEl.addEventListener('dragleave', () => dropEl.classList.remove('over'));
-dropEl.addEventListener('drop', e => { e.preventDefault(); dropEl.classList.remove('over'); if (e.dataTransfer.files[0]) pick(e.dataTransfer.files[0]); });
+dropEl.addEventListener('drop', e => {
+  e.preventDefault(); dropEl.classList.remove('over');
+  if (e.dataTransfer.files[0]) pick(e.dataTransfer.files[0]);
+});
 fi.addEventListener('change', () => { if (fi.files[0]) pick(fi.files[0]); });
 
 function pick(f) {
   selFile = f;
   dropEl.querySelector('.drop-ttl').textContent = f.name;
-  dropEl.querySelector('.drop-sub').textContent = (f.size/1024/1024).toFixed(1)+' MB · click to change';
+  dropEl.querySelector('.drop-sub').textContent = (f.size/1024/1024).toFixed(1) + ' MB · click to change';
   document.getElementById('goBtn').disabled = !document.getElementById('akey').value.trim();
 }
 
-// ─── SRT helpers ─────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════
+// SRT helpers
+// ════════════════════════════════════════════════════════════════════════
 function ts(s) {
   const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=Math.floor(s%60), ms=Math.round((s%1)*1000);
   return `${pad(h)}:${pad(m)}:${pad(sec)},${pad(ms,3)}`;
 }
-function pad(n,z=2){ return String(Math.floor(n)).padStart(z,'0'); }
+function pad(n, z=2) { return String(Math.floor(n)).padStart(z,'0'); }
 
 function buildSRT() {
   const rows = document.getElementById('sl').querySelectorAll('.seg');
@@ -266,34 +442,38 @@ function dlSRT() {
   const blob = new Blob([buildSRT()], {type:'text/plain;charset=utf-8'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = (selFile ? selFile.name.replace(/\.[^.]+$/,'') : 'subtitles')+'.srt';
+  a.download = (selFile ? selFile.name.replace(/\.[^.]+$/,'') : 'subtitles') + '.srt';
   a.click();
 }
 
 function copySRT() {
   navigator.clipboard.writeText(buildSRT()).then(() => {
     const b = document.getElementById('cpbtn');
-    b.textContent = '✓ Copied!';
-    setTimeout(() => b.textContent = '📋 Copy SRT', 2000);
+    const span = b.querySelector('span[data-i]') || b;
+    const orig = span.textContent;
+    span.textContent = t('copied');
+    setTimeout(() => { span.textContent = t('copyBtn'); }, 2000);
   });
 }
 
-// ─── UI helpers ──────────────────────────────────────────────────────────────
-function step(id, state) { document.getElementById(id).className='step'+(state?' '+state:''); }
+// ════════════════════════════════════════════════════════════════════════
+// UI helpers
+// ════════════════════════════════════════════════════════════════════════
+function step(id, state) { document.getElementById(id).className = 'step' + (state ? ' '+state : ''); }
 function prog(pct, title) {
-  document.getElementById('pfill').style.width = pct+'%';
-  document.getElementById('ppct').textContent = pct+'%';
+  document.getElementById('pfill').style.width = pct + '%';
+  document.getElementById('ppct').textContent  = pct + '%';
   document.getElementById('ptitle').textContent = title;
 }
 function showErr(msg) {
   const e = document.getElementById('errd');
   e.style.display = 'block';
-  e.textContent = '⚠ '+msg;
+  e.textContent   = '⚠ ' + msg;
 }
 function addSeg(seg) {
   const list = document.getElementById('sl');
   const edit = document.getElementById('edchk').checked;
-  const n = list.children.length+1;
+  const n = list.children.length + 1;
   const a = ts(seg.start), b = ts(seg.end);
   const d = document.createElement('div');
   d.className = 'seg';
@@ -301,97 +481,98 @@ function addSeg(seg) {
   list.appendChild(d);
   list.scrollTop = list.scrollHeight;
   document.getElementById('rc').style.display = 'block';
-  document.getElementById('scnt').textContent = `${n} segment${n!==1?'s':''}`;
+  document.getElementById('scnt').textContent  = t('segments', n);
   refreshStats();
 }
 function refreshStats() {
   const rows = document.getElementById('sl').querySelectorAll('.seg');
   if (!rows.length) return;
   const lastT = rows[rows.length-1].querySelector('.st').dataset.t.split('|')[1];
-  const p = lastT.split(/[:,]/);
-  const dur = (+p[0])*3600+(+p[1])*60+(+p[2])+(+p[3])/1000;
-  const words = [...rows].reduce((s,r)=>s+r.querySelector('.sx').textContent.trim().split(/\s+/).length,0);
-  const sz = buildSRT().length;
+  const p     = lastT.split(/[:,]/);
+  const dur   = (+p[0])*3600 + (+p[1])*60 + (+p[2]) + (+p[3])/1000;
+  const words = [...rows].reduce((s,r) => s + r.querySelector('.sx').textContent.trim().split(/\s+/).length, 0);
+  const sz    = buildSRT().length;
   document.getElementById('zsegs').textContent = rows.length;
-  document.getElementById('zdur').textContent = dur>=60?(dur/60).toFixed(1)+'m':Math.round(dur)+'s';
-  document.getElementById('zwds').textContent = words;
-  document.getElementById('zsz').textContent = sz>1024?(sz/1024).toFixed(1)+'KB':sz+'B';
+  document.getElementById('zdur').textContent  = dur >= 60 ? (dur/60).toFixed(1)+'m' : Math.round(dur)+'s';
+  document.getElementById('zwds').textContent  = words;
+  document.getElementById('zsz').textContent   = sz > 1024 ? (sz/1024).toFixed(1)+'KB' : sz+'B';
 }
 function cleanup() {
-  document.getElementById('goBtn').style.display = 'inline-flex';
-  document.getElementById('goBtn').disabled = false;
+  document.getElementById('goBtn').style.display  = 'inline-flex';
+  document.getElementById('goBtn').disabled       = false;
   document.getElementById('stopBtn').style.display = 'none';
-  document.getElementById('wv').style.opacity = '.3';
+  document.getElementById('wv').style.opacity     = '.3';
 }
 function doStop() { killed = true; }
 
-// ─── PCM → WAV ArrayBuffer (no cloning, pure typed arrays) ───────────────────
+// ════════════════════════════════════════════════════════════════════════
+// PCM → WAV ArrayBuffer
+// ════════════════════════════════════════════════════════════════════════
 function makePCM(floatData, sr) {
-  // quantise float32 → int16
-  const n = floatData.length;
+  const n   = floatData.length;
   const buf = new ArrayBuffer(44 + n*2);
   const dv  = new DataView(buf);
   const w16 = new Int16Array(buf, 44);
-  const ws = (o,s) => { for(let i=0;i<s.length;i++) dv.setUint8(o+i, s.charCodeAt(i)); };
+  const ws  = (o,s) => { for (let i=0;i<s.length;i++) dv.setUint8(o+i, s.charCodeAt(i)); };
   ws(0,'RIFF'); dv.setUint32(4, 36+n*2, true);
   ws(8,'WAVE'); ws(12,'fmt ');
   dv.setUint32(16,16,true); dv.setUint16(20,1,true); dv.setUint16(22,1,true);
   dv.setUint32(24,sr,true); dv.setUint32(28,sr*2,true);
   dv.setUint16(32,2,true);  dv.setUint16(34,16,true);
   ws(36,'data'); dv.setUint32(40,n*2,true);
-  for (let i=0; i<n; i++) w16[i] = Math.max(-32768, Math.min(32767, floatData[i]*32767));
+  for (let i=0;i<n;i++) w16[i] = Math.max(-32768, Math.min(32767, floatData[i]*32767));
   return buf;
 }
 
-// ─── resample float32 array (linear) ─────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════
+// Resample float32 (linear interpolation)
+// ════════════════════════════════════════════════════════════════════════
 function resample(data, fromSR, toSR) {
   if (fromSR === toSR) return data;
   const ratio  = fromSR / toSR;
   const outLen = Math.ceil(data.length / ratio);
   const out    = new Float32Array(outLen);
-  for (let i=0; i<outLen; i++) {
+  for (let i=0;i<outLen;i++) {
     const pos = i * ratio;
     const lo  = Math.floor(pos), hi = Math.min(lo+1, data.length-1);
-    const t   = pos - lo;
-    out[i] = data[lo]*(1-t) + data[hi]*t;
+    const t2  = pos - lo;
+    out[i] = data[lo]*(1-t2) + data[hi]*t2;
   }
   return out;
 }
 
-// ─── compress: decode → mix to mono → resample ───────────────────────────────
-// Returns a plain Float32Array + sampleRate (no File, no Blob, no clone issues)
+// ════════════════════════════════════════════════════════════════════════
+// Compress: decode → mono → resample
+// ════════════════════════════════════════════════════════════════════════
 async function compress(file) {
   step('s1','on');
-  document.getElementById('cinfo').textContent = 'Reading file…';
+  document.getElementById('cinfo').textContent = uiLang==='ja' ? 'ファイルを読み込み中…' : 'Reading file…';
 
   const targetSR = parseInt(document.getElementById('qual').value) || 0;
   const ab = await file.arrayBuffer();
 
   if (!targetSR) {
     step('s1','ok');
-    // Return raw bytes — skip WAV building, just use the file bytes directly
     return { raw: ab, sampleRate: null };
   }
 
   const tmpCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: targetSR });
   let decoded;
   try {
-    decoded = await tmpCtx.decodeAudioData(ab.slice(0)); // slice to copy, avoids detach issues
+    decoded = await tmpCtx.decodeAudioData(ab.slice(0));
   } finally {
     tmpCtx.close();
   }
 
-  document.getElementById('cinfo').textContent = 'Mixing to mono…';
+  document.getElementById('cinfo').textContent = uiLang==='ja' ? 'モノラルに変換中…' : 'Mixing to mono…';
 
-  // Mix all channels to mono in a plain Float32Array
-  const len = decoded.length;
+  const len  = decoded.length;
   const mono = new Float32Array(len);
-  for (let ch=0; ch<decoded.numberOfChannels; ch++) {
+  for (let ch=0;ch<decoded.numberOfChannels;ch++) {
     const src = decoded.getChannelData(ch);
-    for (let i=0; i<len; i++) mono[i] += src[i] / decoded.numberOfChannels;
+    for (let i=0;i<len;i++) mono[i] += src[i] / decoded.numberOfChannels;
   }
 
-  // Resample if needed (AudioContext might not have hit exact target)
   const resampled = resample(mono, decoded.sampleRate, targetSR);
 
   const origMB = (file.size/1024/1024).toFixed(1);
@@ -401,21 +582,24 @@ async function compress(file) {
   return { pcm: resampled, sampleRate: targetSR };
 }
 
-// ─── split Float32 PCM into chunks ───────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════
+// Chunk PCM
+// ════════════════════════════════════════════════════════════════════════
 function chunkPCM(pcm, sr, chunkSec) {
   const chunkLen = Math.floor(chunkSec * sr);
-  const parts = [];
+  const parts    = [];
   for (let off=0; off<pcm.length; off+=chunkLen) {
-    const slice = pcm.subarray(off, off+chunkLen);
-    parts.push({ pcm: slice, timeOffset: off/sr });
+    parts.push({ pcm: pcm.subarray(off, off+chunkLen), timeOffset: off/sr });
   }
   return parts;
 }
 
-// ─── call Whisper API ─────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════
+// Whisper API (OpenAI / Groq)
+// ════════════════════════════════════════════════════════════════════════
 async function callWhisper(wavBuf, timeOffset, apiKey, lang, idx) {
-  const urls  = { openai:'https://api.openai.com/v1/audio/transcriptions', groq:'https://api.groq.com/openai/v1/audio/transcriptions' };
-  const mdls  = { openai:'whisper-1', groq:'whisper-large-v3' };
+  const urls = { openai:'https://api.openai.com/v1/audio/transcriptions', groq:'https://api.groq.com/openai/v1/audio/transcriptions' };
+  const mdls = { openai:'whisper-1', groq:'whisper-large-v3' };
 
   const blob = new Blob([wavBuf], { type:'audio/wav' });
   const fd   = new FormData();
@@ -427,21 +611,10 @@ async function callWhisper(wavBuf, timeOffset, apiKey, lang, idx) {
 
   let r;
   try {
-    r = await fetch(urls[prov], {
-      method:  'POST',
-      headers: { Authorization: 'Bearer '+apiKey },
-      body:    fd
-    });
+    r = await fetch(urls[prov], { method:'POST', headers:{ Authorization:'Bearer '+apiKey }, body:fd });
   } catch (netErr) {
-    if (location.protocol === 'file:') {
-      throw new Error(
-        'Cannot reach the API when opened from disk (file://).\n' +
-        'Serve the file over HTTP instead — e.g. run:\n' +
-        '  npx serve .\n' +
-        'then open http://localhost:3000'
-      );
-    }
-    throw new Error('Network request failed — check your internet connection.\nDetail: ' + netErr.message);
+    if (location.protocol === 'file:') throw new Error(t('errFileProtocol'));
+    throw new Error(t('errNetwork') + netErr.message);
   }
 
   if (!r.ok) {
@@ -458,35 +631,126 @@ async function callWhisper(wavBuf, timeOffset, apiKey, lang, idx) {
   }));
 }
 
-// ─── main ─────────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════
+// Gemini API  (gemini-2.0-flash — inline audio, returns timed segments)
+// ════════════════════════════════════════════════════════════════════════
+async function callGemini(file, apiKey, lang) {
+  // 1. Convert file to base64
+  const ab     = await file.arrayBuffer();
+  const bytes  = new Uint8Array(ab);
+  let binary   = '';
+  for (let i=0;i<bytes.length;i++) binary += String.fromCharCode(bytes[i]);
+  const b64 = btoa(binary);
+
+  // 2. Determine MIME type
+  const mimeMap = { mp3:'audio/mpeg', wav:'audio/wav', mp4:'video/mp4', m4a:'audio/mp4',
+                    aac:'audio/aac', ogg:'audio/ogg', flac:'audio/flac', webm:'audio/webm' };
+  const ext  = file.name.split('.').pop().toLowerCase();
+  const mime = mimeMap[ext] || 'audio/wav';
+
+  // 3. Compose prompt
+  const langHint = lang ? (lang==='ja' ? ' The audio is in Japanese.' : ` The audio language is ${lang}.`) : '';
+  const prompt =
+    `You are a transcription engine. Transcribe every spoken word in this audio file with precise timestamps.${langHint}\n` +
+    `Return ONLY a JSON array (no markdown, no explanation) where each element has:\n` +
+    `  "start": number (seconds, e.g. 1.24),\n` +
+    `  "end":   number (seconds),\n` +
+    `  "text":  string (the spoken words for that segment)\n` +
+    `Keep segments short (1–2 sentences). Do not skip any speech.`;
+
+  // 4. Call Gemini
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  let r;
+  try {
+    r = await fetch(url, {
+      method:  'POST',
+      headers: { 'Content-Type':'application/json' },
+      body:    JSON.stringify({
+        contents: [{
+          parts: [
+            { text: prompt },
+            { inline_data: { mime_type: mime, data: b64 } }
+          ]
+        }],
+        generationConfig: { temperature: 0, responseMimeType: 'application/json' }
+      })
+    });
+  } catch (netErr) {
+    if (location.protocol === 'file:') throw new Error(t('errFileProtocol'));
+    throw new Error(t('errNetwork') + netErr.message);
+  }
+
+  if (!r.ok) {
+    let msg = `Gemini API ${r.status}`;
+    try { const j=await r.json(); msg = j.error?.message || msg; } catch(e){}
+    throw new Error(msg);
+  }
+
+  const data = await r.json();
+  const raw  = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+  let segs;
+  try {
+    const clean = raw.replace(/^```json\s*/,'').replace(/```\s*$/,'').trim();
+    segs = JSON.parse(clean);
+  } catch(e) {
+    throw new Error('Gemini returned unexpected format: ' + raw.slice(0,200));
+  }
+  return segs.map(s => ({ start: +s.start||0, end: +s.end||0, text: s.text||'' }));
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// Main
+// ════════════════════════════════════════════════════════════════════════
 async function go() {
   const apiKey = document.getElementById('akey').value.trim();
   if (!apiKey || !selFile) return;
 
   killed = false;
-  document.getElementById('errd').style.display = 'none';
-  document.getElementById('rc').style.display   = 'none';
-  document.getElementById('sl').innerHTML        = '';
+  document.getElementById('errd').style.display   = 'none';
+  document.getElementById('rc').style.display     = 'none';
+  document.getElementById('sl').innerHTML          = '';
   document.getElementById('goBtn').style.display  = 'none';
   document.getElementById('stopBtn').style.display = 'inline-flex';
-  document.getElementById('pc').style.display    = 'block';
+  document.getElementById('pc').style.display     = 'block';
   ['s1','s2','s3','s4'].forEach(id => step(id,''));
 
   try {
-    prog(5, 'Compressing audio…');
+    const lang = document.getElementById('lang').value;
+
+    // ── Gemini path (no chunking needed) ──────────────────────────────
+    if (prov === 'gemini') {
+      prog(5,  t('progCompressing'));
+      step('s1','ok');
+      prog(15, t('progSplitting'));
+      step('s2','ok');
+      prog(20, t('progTranscribing', 1, 1));
+      step('s3','on');
+
+      const segs = await callGemini(selFile, apiKey, lang);
+      if (killed) return cleanup();
+      segs.forEach(s => addSeg(s));
+
+      step('s3','ok'); step('s4','ok');
+      prog(100, t('progDone'));
+      document.getElementById('dbadge').textContent = t('badgeDone');
+      document.getElementById('dbadge').className   = 'badge bg';
+      refreshStats();
+      return cleanup();
+    }
+
+    // ── Whisper path (OpenAI / Groq) ──────────────────────────────────
+    prog(5, t('progCompressing'));
     const compressed = await compress(selFile);
     if (killed) return cleanup();
 
     step('s2','on');
-    prog(15, 'Splitting into chunks…');
+    prog(15, t('progSplitting'));
     const chunkSec = parseInt(document.getElementById('csec').value);
-    const lang     = document.getElementById('lang').value;
 
     let chunks;
     if (compressed.pcm) {
       chunks = chunkPCM(compressed.pcm, compressed.sampleRate, chunkSec);
     } else {
-      // no compression — treat entire file as one chunk with raw bytes
       chunks = [{ raw: compressed.raw, timeOffset: 0 }];
     }
 
@@ -495,27 +759,19 @@ async function go() {
     if (killed) return cleanup();
 
     step('s3','on');
-
     for (let i=0; i<chunks.length; i++) {
       if (killed) break;
-      prog(15 + Math.round((i/chunks.length)*78), `Transcribing chunk ${i+1} of ${chunks.length}…`);
+      prog(15 + Math.round((i/chunks.length)*78), t('progTranscribing', i+1, chunks.length));
 
-      // Build WAV buffer fresh each iteration — never stored as FormData
-      let wavBuf;
-      if (chunks[i].pcm) {
-        wavBuf = makePCM(chunks[i].pcm, compressed.sampleRate);
-      } else {
-        wavBuf = chunks[i].raw;
-      }
-
-      const segs = await callWhisper(wavBuf, chunks[i].timeOffset, apiKey, lang, i);
+      const wavBuf = chunks[i].pcm ? makePCM(chunks[i].pcm, compressed.sampleRate) : chunks[i].raw;
+      const segs   = await callWhisper(wavBuf, chunks[i].timeOffset, apiKey, lang, i);
       segs.forEach(s => addSeg(s));
     }
 
     step('s3','ok'); step('s4','ok');
-    prog(100, killed ? 'Stopped.' : 'Done!');
-    document.getElementById('dbadge').textContent  = killed ? '⏹ Stopped' : '✓ Done';
-    document.getElementById('dbadge').className    = 'badge '+(killed?'ba':'bg');
+    prog(100, killed ? t('progStopped') : t('progDone'));
+    document.getElementById('dbadge').textContent = killed ? t('badgeStopped') : t('badgeDone');
+    document.getElementById('dbadge').className   = 'badge ' + (killed ? 'ba' : 'bg');
     refreshStats();
 
   } catch(e) {
@@ -524,6 +780,12 @@ async function go() {
   }
   cleanup();
 }
+
+// ════════════════════════════════════════════════════════════════════════
+// Init
+// ════════════════════════════════════════════════════════════════════════
+setProv('groq');
+setUiLang('en');
 </script>
 </body>
 </html>
