@@ -148,9 +148,9 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--acc);cursor:point
     </select>
   </div>
   <div class="sg" id="sg-compress"><span class="sl" data-i="compressLabel">Compress to</span>
-    <select id="qual">
-      <option value="16000" data-i="q16k">16 kHz mono (smallest)</option>
-      <option value="22050" selected data-i="q22k">22 kHz mono (recommended)</option>
+    <select id="qual" onchange="filterChunkOptions()">
+      <option value="16000" selected data-i="q16k">16 kHz mono (recommended for large files)</option>
+      <option value="22050" data-i="q22k">22 kHz mono (recommended)</option>
       <option value="44100" data-i="q44k">44 kHz mono (high quality)</option>
       <option value="0" data-i="qNone">No compression</option>
     </select>
@@ -161,8 +161,12 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--acc);cursor:point
       <option value="600" selected data-i="c10m">10 minutes</option>
       <option value="900" data-i="c15m">15 minutes</option>
       <option value="1200" data-i="c20m">20 minutes</option>
+      <option value="1800" data-i="c30m">30 minutes</option>
+      <option value="2700" data-i="c45m">45 minutes</option>
+      <option value="3600" data-i="c60m">60 minutes</option>
     </select>
   </div>
+  <p id="chunk-warn" style="display:none;font-size:12px;color:var(--red);margin-top:4px" data-i="chunkWarn"></p>
 </div>
 <div class="srow">
   <label class="chk"><input type="checkbox" id="edchk" checked> <span data-i="editLabel">Allow editing in preview</span></label>
@@ -237,8 +241,8 @@ const I18N = {
     langZh:        'Chinese',
     langKo:        'Korean',
     compressLabel: 'Compress to',
-    q16k:          '16 kHz mono (smallest)',
-    q22k:          '22 kHz mono (recommended)',
+    q16k:          '16 kHz mono (recommended for large files)',
+    q22k:          '22 kHz mono (high quality)',
     q44k:          '44 kHz mono (high quality)',
     qNone:         'No compression',
     chunkLabel:    'Chunk size',
@@ -246,6 +250,10 @@ const I18N = {
     c10m:          '10 minutes',
     c15m:          '15 minutes',
     c20m:          '20 minutes',
+    c30m:          '30 minutes',
+    c45m:          '45 minutes',
+    c60m:          '60 minutes',
+    chunkWarn:     '⚠ No valid chunk size for this compression — switch to 16 kHz mono.',
     editLabel:     'Allow editing in preview',
     startBtn:      'Start transcription',
     stopBtn:       '⏹ Stop',
@@ -291,8 +299,8 @@ const I18N = {
     langZh:        '中国語',
     langKo:        '韓国語',
     compressLabel: '圧縮設定',
-    q16k:          '16 kHz モノラル（最小）',
-    q22k:          '22 kHz モノラル（推奨）',
+    q16k:          '16 kHz モノラル（大容量ファイル推奨）',
+    q22k:          '22 kHz モノラル（高品質）',
     q44k:          '44 kHz モノラル（高品質）',
     qNone:         '圧縮なし',
     chunkLabel:    'チャンクサイズ',
@@ -300,6 +308,10 @@ const I18N = {
     c10m:          '10分',
     c15m:          '15分',
     c20m:          '20分',
+    c30m:          '30分',
+    c45m:          '45分',
+    c60m:          '60分',
+    chunkWarn:     '⚠ この圧縮設定では有効なチャンクサイズがありません。16 kHzモノラルに変更してください。',
     editLabel:     'プレビューで編集を許可',
     startBtn:      '文字起こし開始',
     stopBtn:       '⏹ 停止',
@@ -375,9 +387,49 @@ function setProv(p) {
   const map = {openai:'oa', groq:'gr', gemini:'gm'};
   document.getElementById('t-'+map[p]).classList.add('on');
 
-  // Gemini doesn't need chunk size (handles long audio natively)
-  document.getElementById('sg-chunk').style.display = p === 'gemini' ? 'none' : '';
+  document.getElementById('sg-chunk').style.display = '';
+  filterChunkOptions();
   updateHint();
+}
+
+// ── Chunk option filter ───────────────────────────────────────────────────────
+// API limits: Gemini = 20 MB, OpenAI/Groq Whisper = 25 MB
+// WAV size = sampleRate * 2 bytes * seconds  (mono 16-bit)
+// We apply a 10% safety margin on top.
+function filterChunkOptions() {
+  const sr      = parseInt(document.getElementById('qual').value) || 0;
+  const limits  = { gemini: 20, openai: 25, groq: 25 }; // MB
+  const limitMB = limits[prov] || 25;
+
+  const csec = document.getElementById('csec');
+  let lastVisible = null;
+
+  Array.from(csec.options).forEach(opt => {
+    const secs    = parseInt(opt.value);
+    let   tooBig  = false;
+
+    if (sr > 0) {
+      // estimated WAV bytes = sr * 2 * secs, with 10% margin
+      const estMB = (sr * 2 * secs) / (1024 * 1024); // WAV is deterministic, no margin needed
+      tooBig = estMB > limitMB;
+    }
+    opt.hidden = tooBig;
+    if (!tooBig) lastVisible = opt.value;
+  });
+
+  // If the currently selected option is now hidden, pick the largest visible one
+  const selected = csec.options[csec.selectedIndex];
+  if (selected && selected.hidden && lastVisible) csec.value = lastVisible;
+
+  // Show warning and disable start button if no valid options exist
+  const noValid = !lastVisible;
+  const warn = document.getElementById('chunk-warn');
+  if (warn) {
+    warn.style.display = noValid ? 'block' : 'none';
+    if (noValid) warn.textContent = t('chunkWarn');
+  }
+  const goBtn = document.getElementById('goBtn');
+  if (goBtn && noValid) goBtn.disabled = true;
 }
 
 function updateHint() {
@@ -632,46 +684,107 @@ async function callWhisper(wavBuf, timeOffset, apiKey, lang, idx) {
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// Gemini API  (gemini-2.0-flash — inline audio, returns timed segments)
+// Gemini API — chunk-aware version
+// Accepts a WAV ArrayBuffer chunk + timeOffset (same interface as Whisper).
+// Uses the Gemini Files API for chunks >4 MB to keep inline payloads small.
 // ════════════════════════════════════════════════════════════════════════
-async function callGemini(file, apiKey, lang) {
-  // 1. Convert file to base64
-  const ab     = await file.arrayBuffer();
-  const bytes  = new Uint8Array(ab);
-  let binary   = '';
-  for (let i=0;i<bytes.length;i++) binary += String.fromCharCode(bytes[i]);
-  const b64 = btoa(binary);
 
-  // 2. Determine MIME type
-  const mimeMap = { mp3:'audio/mpeg', wav:'audio/wav', mp4:'video/mp4', m4a:'audio/mp4',
-                    aac:'audio/aac', ogg:'audio/ogg', flac:'audio/flac', webm:'audio/webm' };
-  const ext  = file.name.split('.').pop().toLowerCase();
-  const mime = mimeMap[ext] || 'audio/wav';
+// Upload a WAV buffer to Gemini Files API; returns a file URI
+async function geminiUploadFile(wavBuf, apiKey) {
+  const INLINE_LIMIT = 4 * 1024 * 1024; // 4 MB — use Files API above this (Gemini hard limit is 20 MB)
+  if (wavBuf.byteLength <= INLINE_LIMIT) return null; // signal: use inline
 
-  // 3. Compose prompt
-  const langHint = lang ? (lang==='ja' ? ' The audio is in Japanese.' : ` The audio language is ${lang}.`) : '';
+  // Step 1: initiate resumable upload
+  const initR = await fetch(
+    `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: {
+        'X-Goog-Upload-Protocol': 'resumable',
+        'X-Goog-Upload-Command': 'start',
+        'X-Goog-Upload-Header-Content-Length': wavBuf.byteLength,
+        'X-Goog-Upload-Header-Content-Type': 'audio/wav',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ file: { display_name: 'chunk.wav' } })
+    }
+  );
+  if (!initR.ok) throw new Error('Gemini file upload init failed: ' + initR.status);
+  const uploadUrl = initR.headers.get('X-Goog-Upload-URL');
+  if (!uploadUrl) throw new Error('Gemini did not return an upload URL');
+
+  // Step 2: upload bytes
+  const uploadR = await fetch(uploadUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Length': wavBuf.byteLength,
+      'X-Goog-Upload-Offset': '0',
+      'X-Goog-Upload-Command': 'upload, finalize'
+    },
+    body: wavBuf
+  });
+  if (!uploadR.ok) throw new Error('Gemini file upload failed: ' + uploadR.status);
+  const uploadData = await uploadR.json();
+  return uploadData.file?.uri || null;
+}
+
+// Convert ArrayBuffer → base64 in chunks to avoid call-stack overflow on large buffers
+function arrayBufferToBase64(buf) {
+  const bytes = new Uint8Array(buf);
+  const CHUNK = 0x8000; // 32 KB at a time
+  let binary  = '';
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+async function callGemini(wavBuf, timeOffset, apiKey, lang, idx) {
+  // Gemini Files API hard limit is 20 MB per file
+  const MAX_CHUNK_BYTES = 19 * 1024 * 1024; // 19 MB safety margin
+  if (wavBuf.byteLength > MAX_CHUNK_BYTES) {
+    const mb = (wavBuf.byteLength / 1024 / 1024).toFixed(1);
+    throw new Error(
+      `Chunk ${idx+1} is ${mb} MB — Gemini's limit is 20 MB per chunk.\n` +
+      `Fix: use a smaller chunk size (5–10 min) and/or lower compression (16 kHz mono).`
+    );
+  }
+  const langHint = lang ? (lang === 'ja' ? ' The audio is in Japanese.' : ` The audio language is ${lang}.`) : '';
   const prompt =
-    `You are a transcription engine. Transcribe every spoken word in this audio file with precise timestamps.${langHint}\n` +
+    `You are a transcription engine. Transcribe every spoken word in this WAV audio chunk with precise timestamps.${langHint}\n` +
+    `The audio starts at t=0 within this chunk (you will receive the global offset separately).\n` +
     `Return ONLY a JSON array (no markdown, no explanation) where each element has:\n` +
-    `  "start": number (seconds, e.g. 1.24),\n` +
-    `  "end":   number (seconds),\n` +
-    `  "text":  string (the spoken words for that segment)\n` +
-    `Keep segments short (1–2 sentences). Do not skip any speech.`;
+    `  "start": number (seconds from start of THIS chunk),\n` +
+    `  "end":   number (seconds from start of THIS chunk),\n` +
+    `  "text":  string (spoken words for that segment)\n` +
+    `Keep segments short (1–3 sentences). Do not skip any speech.`;
 
-  // 4. Call Gemini
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+  // Try Files API for large chunks; fall back to inline
+  let audioPart;
+  let fileUri = null;
+  try {
+    fileUri = await geminiUploadFile(wavBuf, apiKey);
+  } catch(e) {
+    // Files API failed — fall back to inline (may OOM on very large chunks, but worth trying)
+    console.warn('Gemini Files API upload failed, falling back to inline:', e.message);
+  }
+
+  if (fileUri) {
+    audioPart = { file_data: { mime_type: 'audio/wav', file_uri: fileUri } };
+  } else {
+    const b64  = arrayBufferToBase64(wavBuf);
+    audioPart  = { inline_data: { mime_type: 'audio/wav', data: b64 } };
+  }
+
   let r;
   try {
     r = await fetch(url, {
       method:  'POST',
-      headers: { 'Content-Type':'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: mime, data: b64 } }
-          ]
-        }],
+        contents: [{ parts: [ { text: prompt }, audioPart ] }],
         generationConfig: { temperature: 0, responseMimeType: 'application/json' }
       })
     });
@@ -682,7 +795,7 @@ async function callGemini(file, apiKey, lang) {
 
   if (!r.ok) {
     let msg = `Gemini API ${r.status}`;
-    try { const j=await r.json(); msg = j.error?.message || msg; } catch(e){}
+    try { const j = await r.json(); msg = j.error?.message || msg; } catch(e) {}
     throw new Error(msg);
   }
 
@@ -693,9 +806,15 @@ async function callGemini(file, apiKey, lang) {
     const clean = raw.replace(/^```json\s*/,'').replace(/```\s*$/,'').trim();
     segs = JSON.parse(clean);
   } catch(e) {
-    throw new Error('Gemini returned unexpected format: ' + raw.slice(0,200));
+    throw new Error('Gemini returned unexpected format: ' + raw.slice(0, 200));
   }
-  return segs.map(s => ({ start: +s.start||0, end: +s.end||0, text: s.text||'' }));
+
+  // Apply time offset so timestamps are global
+  return segs.map(s => ({
+    start: (+s.start || 0) + timeOffset,
+    end:   (+s.end   || 0) + timeOffset,
+    text:  s.text || ''
+  }));
 }
 
 // ════════════════════════════════════════════════════════════════════════
@@ -717,28 +836,7 @@ async function go() {
   try {
     const lang = document.getElementById('lang').value;
 
-    // ── Gemini path (no chunking needed) ──────────────────────────────
-    if (prov === 'gemini') {
-      prog(5,  t('progCompressing'));
-      step('s1','ok');
-      prog(15, t('progSplitting'));
-      step('s2','ok');
-      prog(20, t('progTranscribing', 1, 1));
-      step('s3','on');
-
-      const segs = await callGemini(selFile, apiKey, lang);
-      if (killed) return cleanup();
-      segs.forEach(s => addSeg(s));
-
-      step('s3','ok'); step('s4','ok');
-      prog(100, t('progDone'));
-      document.getElementById('dbadge').textContent = t('badgeDone');
-      document.getElementById('dbadge').className   = 'badge bg';
-      refreshStats();
-      return cleanup();
-    }
-
-    // ── Whisper path (OpenAI / Groq) ──────────────────────────────────
+    // ── Shared path: compress → chunk → call API ─────────────────────
     prog(5, t('progCompressing'));
     const compressed = await compress(selFile);
     if (killed) return cleanup();
@@ -763,8 +861,15 @@ async function go() {
       if (killed) break;
       prog(15 + Math.round((i/chunks.length)*78), t('progTranscribing', i+1, chunks.length));
 
+      // Build WAV buffer for this chunk
       const wavBuf = chunks[i].pcm ? makePCM(chunks[i].pcm, compressed.sampleRate) : chunks[i].raw;
-      const segs   = await callWhisper(wavBuf, chunks[i].timeOffset, apiKey, lang, i);
+
+      let segs;
+      if (prov === 'gemini') {
+        segs = await callGemini(wavBuf, chunks[i].timeOffset, apiKey, lang, i);
+      } else {
+        segs = await callWhisper(wavBuf, chunks[i].timeOffset, apiKey, lang, i);
+      }
       segs.forEach(s => addSeg(s));
     }
 
