@@ -23,7 +23,6 @@ header{margin-bottom:2.5rem;display:flex;justify-content:space-between;align-ite
 .lang-sw{display:flex;gap:4px;align-items:center;margin-top:4px}
 .lang-btn{padding:4px 10px;border-radius:var(--rs);border:1px solid var(--bord);background:transparent;color:var(--mute);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;letter-spacing:.04em}
 .lang-btn.on{background:var(--acc-d);border-color:var(--acc);color:var(--txt)}
-/* Login */
 #login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;width:100%}
 .login-box{width:100%;max-width:420px}
 .login-logo{display:flex;align-items:center;gap:12px;margin-bottom:8px;justify-content:center}
@@ -40,7 +39,6 @@ input[type=password]:focus{border-color:var(--acc)}
 .hint a{color:var(--acc);text-decoration:none}
 .hint a:hover{text-decoration:underline}
 .login-err{font-size:13px;color:var(--red);margin-bottom:.75rem;display:none}
-/* App */
 #app{display:none;width:100%}
 .api-badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;background:var(--surf2);border:1px solid var(--bord);font-size:12px;color:var(--mute);cursor:pointer;transition:all .15s;margin-top:6px}
 .api-badge:hover{border-color:var(--acc);color:var(--acc)}
@@ -290,7 +288,7 @@ const I18N = {
     errNoKey:'Please paste your API key above.',
     hintGroq:'Free key: <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a> \u00b7 fast & free tier',
     hintOpenAI:'Get a key: <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a>',
-    hintGemini:'Free key: <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a>',
+    hintGemini:'Free key: <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a> \u00b7 gemini-2.5-flash',
     errFileProtocol:'Cannot reach the API when opened from disk (file://).\nServe the file over HTTP \u2014 e.g. run:\n  npx serve .\nthen open http://localhost:3000',
     errNetwork:'Network request failed \u2014 check your internet connection.\nDetail: ',
   },
@@ -324,7 +322,7 @@ const I18N = {
     errNoKey:'API\u30ad\u30fc\u3092\u8cbc\u308a\u4ed8\u3051\u3066\u304f\u3060\u3055\u3044\u3002',
     hintGroq:'\u7121\u6599\u30ad\u30fc: <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a> \u00b7 \u9ad8\u901f\u30fb\u7121\u6599\u67a0\u3042\u308a',
     hintOpenAI:'\u30ad\u30fc\u53d6\u5f97: <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a>',
-    hintGemini:'\u7121\u6599\u30ad\u30fc: <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a>',
+    hintGemini:'\u7121\u6599\u30ad\u30fc: <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a> \u00b7 gemini-2.5-flash',
     errFileProtocol:'\u30ed\u30fc\u30ab\u30eb\u30d5\u30a1\u30a4\u30eb\uff08file://\uff09\u304b\u3089API\u306b\u63a5\u7d9a\u3067\u304d\u307e\u305b\u3093\u3002\nHTTP\u30b5\u30fc\u30d0\u30fc\u7d4c\u7531\u3067\u958b\u3044\u3066\u304f\u3060\u3055\u3044\u3002\u4f8b:\n  npx serve .\n\u305d\u306e\u5f8c http://localhost:3000 \u3092\u958b\u304f',
     errNetwork:'\u30cd\u30c3\u30c8\u30ef\u30fc\u30af\u30a8\u30e9\u30fc\u3002\n\u8a73\u7d30: ',
   }
@@ -332,7 +330,7 @@ const I18N = {
 
 // State
 let prov = 'groq', loginProv = 'groq', selFile = null, killed = false, uiLang = 'en';
-const PROV_NAMES = { openai:'OpenAI', groq:'Groq', gemini:'Gemini' };
+const PROV_NAMES = { openai:'OpenAI', groq:'Groq', gemini:'Gemini 2.5 Flash' };
 
 // i18n
 function t(key, ...args) {
@@ -444,12 +442,19 @@ function buildSRT() {
   });
   return out;
 }
+
+// FIX 3: Download SRT with UTF-8 BOM for Camtasia compatibility
 function dlSRT() {
+  const srtContent = buildSRT();
+  // UTF-8 BOM (\uFEFF) prepended so Camtasia correctly detects encoding
+  const BOM = '\uFEFF';
+  const blob = new Blob([BOM + srtContent], { type: 'text/plain;charset=utf-8' });
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([buildSRT()], {type:'text/plain;charset=utf-8'}));
+  a.href = URL.createObjectURL(blob);
   a.download = (selFile ? selFile.name.replace(/\.[^.]+$/,'') : 'subtitles') + '.srt';
   a.click();
 }
+
 function copySRT() {
   navigator.clipboard.writeText(buildSRT()).then(() => {
     const span = document.getElementById('cpbtn').querySelector('span[data-i]');
@@ -556,7 +561,7 @@ function chunkPCM(pcm, sr, chunkSec) {
   return parts;
 }
 
-// Whisper
+// Whisper (OpenAI / Groq)
 async function callWhisper(wavBuf, timeOffset, apiKey, lang, idx) {
   const urls = { openai:'https://api.openai.com/v1/audio/transcriptions', groq:'https://api.groq.com/openai/v1/audio/transcriptions' };
   const fd = new FormData();
@@ -573,7 +578,7 @@ async function callWhisper(wavBuf, timeOffset, apiKey, lang, idx) {
   return (data.segments||[]).map(s=>({ start:s.start+timeOffset, end:s.end+timeOffset, text:s.text }));
 }
 
-// Gemini
+// FIX 1 & 2: Gemini updated to gemini-2.5-flash with robust response parsing
 async function geminiUploadFile(wavBuf, apiKey) {
   if (wavBuf.byteLength <= 4*1024*1024) return null;
   const initR = await fetch(`https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`, {
@@ -603,26 +608,94 @@ function arrayBufferToBase64(buf) {
 async function callGemini(wavBuf, timeOffset, apiKey, lang, idx) {
   if (wavBuf.byteLength > 19*1024*1024)
     throw new Error(`Chunk ${idx+1} is ${(wavBuf.byteLength/1024/1024).toFixed(1)} MB \u2014 Gemini limit is 20 MB. Use smaller chunk size.`);
+
   const langHint = lang ? (lang==='ja' ? ' The audio is in Japanese.' : ` The audio language is ${lang}.`) : '';
-  const prompt = `You are a transcription engine. Transcribe every spoken word in this WAV audio chunk with precise timestamps.${langHint}\nReturn ONLY a JSON array where each element has: "start": number, "end": number, "text": string.`;
+  // Strict prompt: demand pure JSON array, no markdown fences
+  const prompt = `You are a precise transcription engine. Transcribe every spoken word in this WAV audio chunk with accurate timestamps.${langHint}
+Return ONLY a valid JSON array. No markdown. No code fences. No explanation. No extra text before or after.
+Each element must have exactly these fields: "start" (number, seconds), "end" (number, seconds), "text" (string).
+Example: [{"start":0.0,"end":2.5,"text":"Hello world."},{"start":2.8,"end":5.1,"text":"This is a test."}]`;
+
   let fileUri = null;
   try { fileUri = await geminiUploadFile(wavBuf, apiKey); } catch(e) { console.warn('Files API failed, using inline:', e.message); }
+
   const audioPart = fileUri
     ? {file_data:{mime_type:'audio/wav',file_uri:fileUri}}
     : {inline_data:{mime_type:'audio/wav',data:arrayBufferToBase64(wavBuf)}};
+
   let r;
   try {
-    r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+    // FIX 1: Updated to gemini-2.5-flash model
+    r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({contents:[{parts:[{text:prompt},audioPart]}],generationConfig:{temperature:0,responseMimeType:'application/json'}})
+      body: JSON.stringify({
+        contents:[{parts:[{text:prompt},audioPart]}],
+        generationConfig:{
+          temperature:0,
+          // FIX 2: Use response_mime_type to force strict JSON output
+          responseMimeType:'application/json'
+        }
+      })
     });
   } catch(e) { throw new Error(location.protocol==='file:' ? t('errFileProtocol') : t('errNetwork')+e.message); }
-  if (!r.ok) { let m=`Gemini API ${r.status}`; try{const j=await r.json();m=j.error?.message||m;}catch(e){} throw new Error(m); }
-  const raw = (await r.json()).candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+
+  if (!r.ok) {
+    let m=`Gemini API ${r.status}`;
+    try {
+      const j=await r.json();
+      m = j.error?.message || m;
+      // Surface quota/rate-limit details clearly
+      if (j.error?.details) {
+        const details = j.error.details.map(d=>d.metadata ? Object.entries(d.metadata).map(([k,v])=>`${k}: ${v}`).join(', ') : d.reason||'').filter(Boolean);
+        if (details.length) m += '\n' + details.join('\n');
+      }
+    } catch(e){}
+    throw new Error(m);
+  }
+
+  const body = await r.json();
+
+  // FIX 2: Robust parsing — handle text block or direct JSON candidates
+  let raw = '';
+  try {
+    // Primary path: content parts
+    const parts = body.candidates?.[0]?.content?.parts || [];
+    for (const p of parts) {
+      if (p.text) { raw = p.text; break; }
+    }
+    // Fallback: some versions return a top-level text
+    if (!raw && body.text) raw = body.text;
+  } catch(e) { raw = ''; }
+
+  if (!raw) {
+    // Check for safety/finish reasons
+    const reason = body.candidates?.[0]?.finishReason;
+    if (reason && reason !== 'STOP') throw new Error(`Gemini stopped: ${reason}. Try a smaller chunk.`);
+    throw new Error('Gemini returned an empty response. Check your API key quota.');
+  }
+
+  // Strip any accidental markdown fences
+  const cleaned = raw.replace(/^```(?:json)?\s*/i,'').replace(/```\s*$/,'').trim();
+
   let segs;
-  try { segs = JSON.parse(raw.replace(/^```json\s*/,'').replace(/```\s*$/,'').trim()); }
-  catch(e) { throw new Error('Gemini returned unexpected format: '+raw.slice(0,200)); }
-  return segs.map(s=>({ start:(+s.start||0)+timeOffset, end:(+s.end||0)+timeOffset, text:s.text||'' }));
+  try {
+    segs = JSON.parse(cleaned);
+  } catch(e) {
+    // If JSON parse fails, try extracting the array with a regex as last resort
+    const match = cleaned.match(/\[[\s\S]*\]/);
+    if (match) {
+      try { segs = JSON.parse(match[0]); } catch(e2) { segs = null; }
+    }
+    if (!segs) throw new Error('Gemini returned unexpected format: ' + cleaned.slice(0,300));
+  }
+
+  if (!Array.isArray(segs)) throw new Error('Gemini response is not an array: ' + cleaned.slice(0,200));
+
+  return segs.map(s=>({
+    start: (parseFloat(s.start) || 0) + timeOffset,
+    end:   (parseFloat(s.end)   || 0) + timeOffset,
+    text:  String(s.text || '')
+  }));
 }
 
 // Main
