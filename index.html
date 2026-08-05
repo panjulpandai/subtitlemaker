@@ -531,12 +531,46 @@ function resample(data, fromSR, toSR) {
   return out;
 }
 
+// Read a File in chunks via FileReader (works around Chrome's NotReadableError
+// on File.arrayBuffer() for very large files, and reports progress)
+async function readFileChunked(file, onProgress) {
+  const CHUNK = 64 * 1024 * 1024; // 64MB per read
+  const total = file.size;
+  const out = new Uint8Array(total);
+  let offset = 0;
+  while (offset < total) {
+    const end = Math.min(offset + CHUNK, total);
+    const slice = file.slice(offset, end);
+    const chunkBuf = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error || new Error('FileReader error'));
+      reader.onabort = () => reject(new Error('File read aborted'));
+      reader.readAsArrayBuffer(slice);
+    });
+    out.set(new Uint8Array(chunkBuf), offset);
+    offset = end;
+    if (onProgress) onProgress(offset / total);
+  }
+  return out.buffer;
+}
+
 // Compress
 async function compress(file) {
   step('s1','on');
   document.getElementById('cinfo').textContent = uiLang==='ja' ? '\u30d5\u30a1\u30a4\u30eb\u3092\u8aad\u307f\u8fbc\u307f\u4e2d\u2026' : 'Reading file\u2026';
   const targetSR = parseInt(document.getElementById('qual').value) || 0;
-  const ab = await file.arrayBuffer();
+  let ab;
+  try {
+    ab = await readFileChunked(file, (frac) => {
+      const pct = Math.round(frac*100);
+      document.getElementById('cinfo').textContent = (uiLang==='ja' ? '\u30d5\u30a1\u30a4\u30eb\u3092\u8aad\u307f\u8fbc\u307f\u4e2d\u2026 ' : 'Reading file\u2026 ') + pct + '%';
+    });
+  } catch (e) {
+    throw new Error((uiLang==='ja'
+      ? '\u30d5\u30a1\u30a4\u30eb\u3092\u8aad\u307f\u8fbc\u3081\u307e\u305b\u3093\u3067\u3057\u305f\u3002\u30d6\u30e9\u30a6\u30b6\u3092\u518d\u8d77\u52d5\u3057\u3066\u3082\u3046\u4e00\u5ea6\u8a66\u3059\u304b\u3001\u5225\u306e\u30d5\u30a1\u30a4\u30eb\u3067\u304a\u8a66\u3057\u304f\u3060\u3055\u3044\u3002'
+      : 'Could not read the file. Try restarting the browser, or try a different file.') + ' (' + e.message + ')');
+  }
   if (!targetSR) { step('s1','ok'); return { raw:ab, sampleRate:null }; }
   const tmpCtx = new (window.AudioContext||window.webkitAudioContext)({ sampleRate:targetSR });
   let decoded;
