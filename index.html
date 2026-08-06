@@ -541,7 +541,13 @@ async function streamCapture(file, targetSR, chunkSec, onChunk, onProgress) {
   const url = URL.createObjectURL(file);
   const video = document.createElement('video');
   video.src = url;
-  video.muted = true;
+  // NOTE: do NOT set video.muted = true here. Once createMediaElementSource()
+  // is called below, the browser already reroutes all of this element's audio
+  // into the Web Audio graph and stops it reaching the speakers directly --
+  // muting the element on top of that has caused some Chrome builds to feed
+  // silent (all-zero) samples into the graph instead, which is what produced
+  // the "thank you for watching" hallucinations. The silent GainNode further
+  // down is what actually keeps this inaudible to the user.
   video.playsInline = true;
   video.preload = 'auto';
   video.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px';
@@ -572,13 +578,20 @@ async function streamCapture(file, targetSR, chunkSec, onChunk, onProgress) {
     let pending = Promise.resolve();
     let firstErr = null;
 
+    function peakOf(pieces) {
+      let peak = 0;
+      for (const p of pieces) for (let i=0;i<p.length;i++) { const v = Math.abs(p[i]); if (v > peak) peak = v; }
+      return peak;
+    }
+
     function flush(isFinal) {
       if (bufLen === 0) return;
+      const isSilent = peakOf(buf) < 0.0015; // near-digital-silence guard against Whisper hallucination
       const wav = makeWavFromPieces(buf, actualSR);
       const offset = chunkStartTime, idx = chunkIndex++;
       chunkStartTime += bufLen/actualSR;
       buf = []; bufLen = 0;
-      pending = pending.then(() => onChunk(wav, offset, idx)).catch(e => { if (!firstErr) firstErr = e; });
+      pending = pending.then(() => onChunk(wav, offset, idx, isSilent)).catch(e => { if (!firstErr) firstErr = e; });
     }
 
     proc.onaudioprocess = (e) => {
@@ -775,12 +788,15 @@ async function go() {
     prog(2, t('progTranscribing', 1, '?'));
 
     let estTotalChunks = null;
+    let chunkCount = 0, silentCount = 0;
     await streamCapture(
       selFile, targetSR, chunkSec,
-      async (wavBuf, timeOffset, idx) => {
+      async (wavBuf, timeOffset, idx, isSilent) => {
         if (killed) return;
+        chunkCount++;
         const n = estTotalChunks || (idx+1);
         prog(Math.max(2, Math.round((timeOffset/((estTotalChunks||1)*chunkSec))*90)), t('progTranscribing', idx+1, n));
+        if (isSilent) { silentCount++; return; } // don't feed silence to the model -- it hallucinates on it
         const segs = prov==='gemini'
           ? await callGemini(wavBuf, timeOffset, apiKey, lang, idx)
           : await callWhisper(wavBuf, timeOffset, apiKey, lang, idx);
@@ -791,6 +807,16 @@ async function go() {
         prog(2 + Math.round(frac*90), t('progTranscribing', Math.min(estTotalChunks, Math.floor(curT/chunkSec)+1), estTotalChunks));
       }
     );
+
+    if (chunkCount > 0 && silentCount === chunkCount) {
+      showErr(uiLang==='ja'
+        ? '\u3053\u306e\u30d5\u30a1\u30a4\u30eb\u304b\u3089\u97f3\u58f0\u3092\u691c\u51fa\u3067\u304d\u307e\u305b\u3093\u3067\u3057\u305f\u3002\u97f3\u58f0\u30c8\u30e9\u30c3\u30af\u304c\u306a\u3044\u304b\u3001\u975e\u5e38\u306b\u5c0f\u3055\u3044\u53ef\u80fd\u6027\u304c\u3042\u308a\u307e\u3059\u3002\u5225\u306e\u30d7\u30ec\u30fc\u30e4\u30fc\u3067\u97f3\u304c\u51fa\u308b\u304b\u78ba\u8a8d\u3057\u3066\u304f\u3060\u3055\u3044\u3002'
+        : 'No audio was detected in this file. It may have no audio track, or the audio is extremely quiet. Confirm the file has sound in another player and try again.');
+    } else if (silentCount > 0) {
+      document.getElementById('cinfo').textContent += (uiLang==='ja'
+        ? `  \u00b7 \u7121\u97f3\u30c1\u30e3\u30f3\u30af ${silentCount} \u4ef6\u3092\u30b9\u30ad\u30c3\u30d7`
+        : `  \u00b7 skipped ${silentCount} silent chunk${silentCount!==1?'s':''}`);
+    }
 
     step('s3','ok'); step('s4','ok');
     prog(100, killed ? t('progStopped') : t('progDone'));
