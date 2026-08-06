@@ -520,79 +520,98 @@ function makePCM(floatData, sr) {
   return buf;
 }
 
-// Resample
-function resample(data, fromSR, toSR) {
-  if (fromSR === toSR) return data;
-  const ratio = fromSR/toSR, outLen = Math.ceil(data.length/ratio), out = new Float32Array(outLen);
-  for (let i=0;i<outLen;i++) {
-    const pos=i*ratio, lo=Math.floor(pos), hi=Math.min(lo+1,data.length-1), f=pos-lo;
-    out[i] = data[lo]*(1-f)+data[hi]*f;
-  }
-  return out;
+// Build a WAV buffer from an array of Float32Array pieces (concatenated) without
+// ever materializing more than one chunk's worth of audio at a time.
+function makeWavFromPieces(pieces, sr) {
+  let total = 0;
+  for (const p of pieces) total += p.length;
+  const merged = new Float32Array(total);
+  let o = 0;
+  for (const p of pieces) { merged.set(p, o); o += p.length; }
+  return makePCM(merged, sr);
 }
 
-// Read a File in chunks via FileReader (works around Chrome's NotReadableError
-// on File.arrayBuffer() for very large files, and reports progress)
-async function readFileChunked(file, onProgress) {
-  const CHUNK = 64 * 1024 * 1024; // 64MB per read
-  const total = file.size;
-  const out = new Uint8Array(total);
-  let offset = 0;
-  while (offset < total) {
-    const end = Math.min(offset + CHUNK, total);
-    const slice = file.slice(offset, end);
-    const chunkBuf = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(reader.error || new Error('FileReader error'));
-      reader.onabort = () => reject(new Error('File read aborted'));
-      reader.readAsArrayBuffer(slice);
-    });
-    out.set(new Uint8Array(chunkBuf), offset);
-    offset = end;
-    if (onProgress) onProgress(offset / total);
-  }
-  return out.buffer;
-}
+// Stream the file through a hidden <video> element and the real-time Web Audio
+// API. The browser reads the file straight off disk for playback -- it is
+// never loaded into a single JS ArrayBuffer -- so memory use stays flat no
+// matter how large the source file is. Decoded audio is captured live and
+// flushed to onChunk() every `chunkSec` seconds, so only one chunk's worth of
+// PCM is ever held in memory at once.
+async function streamCapture(file, targetSR, chunkSec, onChunk, onProgress) {
+  const url = URL.createObjectURL(file);
+  const video = document.createElement('video');
+  video.src = url;
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = 'auto';
+  video.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px';
+  document.body.appendChild(video);
 
-// Compress
-async function compress(file) {
-  step('s1','on');
-  document.getElementById('cinfo').textContent = uiLang==='ja' ? '\u30d5\u30a1\u30a4\u30eb\u3092\u8aad\u307f\u8fbc\u307f\u4e2d\u2026' : 'Reading file\u2026';
-  const targetSR = parseInt(document.getElementById('qual').value) || 0;
-  let ab;
+  const cleanupEl = () => { try { video.pause(); } catch(e){} video.remove(); URL.revokeObjectURL(url); };
+
   try {
-    ab = await readFileChunked(file, (frac) => {
-      const pct = Math.round(frac*100);
-      document.getElementById('cinfo').textContent = (uiLang==='ja' ? '\u30d5\u30a1\u30a4\u30eb\u3092\u8aad\u307f\u8fbc\u307f\u4e2d\u2026 ' : 'Reading file\u2026 ') + pct + '%';
+    await new Promise((resolve, reject) => {
+      video.addEventListener('loadedmetadata', resolve, { once:true });
+      video.addEventListener('error', () => reject(new Error(
+        uiLang==='ja' ? '\u30e1\u30c7\u30a3\u30a2\u30d5\u30a1\u30a4\u30eb\u3092\u958b\u3051\u307e\u305b\u3093\u3067\u3057\u305f\u3002' : 'Could not open the media file for playback.'
+      )), { once:true });
     });
-  } catch (e) {
-    throw new Error((uiLang==='ja'
-      ? '\u30d5\u30a1\u30a4\u30eb\u3092\u8aad\u307f\u8fbc\u3081\u307e\u305b\u3093\u3067\u3057\u305f\u3002\u30d6\u30e9\u30a6\u30b6\u3092\u518d\u8d77\u52d5\u3057\u3066\u3082\u3046\u4e00\u5ea6\u8a66\u3059\u304b\u3001\u5225\u306e\u30d5\u30a1\u30a4\u30eb\u3067\u304a\u8a66\u3057\u304f\u3060\u3055\u3044\u3002'
-      : 'Could not read the file. Try restarting the browser, or try a different file.') + ' (' + e.message + ')');
-  }
-  if (!targetSR) { step('s1','ok'); return { raw:ab, sampleRate:null }; }
-  const tmpCtx = new (window.AudioContext||window.webkitAudioContext)({ sampleRate:targetSR });
-  let decoded;
-  try { decoded = await tmpCtx.decodeAudioData(ab.slice(0)); } finally { tmpCtx.close(); }
-  document.getElementById('cinfo').textContent = uiLang==='ja' ? '\u30e2\u30ce\u30e9\u30eb\u306b\u5909\u63db\u4e2d\u2026' : 'Mixing to mono\u2026';
-  const mono = new Float32Array(decoded.length);
-  for (let ch=0;ch<decoded.numberOfChannels;ch++) {
-    const src = decoded.getChannelData(ch);
-    for (let i=0;i<decoded.length;i++) mono[i] += src[i]/decoded.numberOfChannels;
-  }
-  const resampled = resample(mono, decoded.sampleRate, targetSR);
-  document.getElementById('cinfo').textContent = `${(file.size/1024/1024).toFixed(1)} MB \u2192 ${((44+resampled.length*2)/1024/1024).toFixed(1)} MB  (${targetSR/1000} kHz mono WAV)`;
-  step('s1','ok');
-  return { pcm:resampled, sampleRate:targetSR };
-}
 
-// Chunk PCM
-function chunkPCM(pcm, sr, chunkSec) {
-  const chunkLen = Math.floor(chunkSec*sr), parts = [];
-  for (let off=0;off<pcm.length;off+=chunkLen)
-    parts.push({ pcm:pcm.subarray(off,off+chunkLen), timeOffset:off/sr });
-  return parts;
+    const ctx = new (window.AudioContext||window.webkitAudioContext)(targetSR ? { sampleRate: targetSR } : {});
+    const actualSR = ctx.sampleRate;
+    const source = ctx.createMediaElementSource(video);
+    const proc = ctx.createScriptProcessor(4096, 1, 1);
+    const silent = ctx.createGain();
+    silent.gain.value = 0;
+    source.connect(proc);
+    proc.connect(silent);
+    silent.connect(ctx.destination);
+
+    const chunkLen = Math.round(chunkSec*actualSR);
+    let buf = [], bufLen = 0, chunkIndex = 0, chunkStartTime = 0;
+    let pending = Promise.resolve();
+    let firstErr = null;
+
+    function flush(isFinal) {
+      if (bufLen === 0) return;
+      const wav = makeWavFromPieces(buf, actualSR);
+      const offset = chunkStartTime, idx = chunkIndex++;
+      chunkStartTime += bufLen/actualSR;
+      buf = []; bufLen = 0;
+      pending = pending.then(() => onChunk(wav, offset, idx)).catch(e => { if (!firstErr) firstErr = e; });
+    }
+
+    proc.onaudioprocess = (e) => {
+      if (killed) return;
+      const data = e.inputBuffer.getChannelData(0);
+      buf.push(new Float32Array(data));
+      bufLen += data.length;
+      if (bufLen >= chunkLen) flush(false);
+      if (onProgress && video.duration) onProgress(video.currentTime/video.duration, video.currentTime, video.duration);
+    };
+
+    await ctx.resume();
+    await video.play();
+
+    await new Promise((resolve, reject) => {
+      video.addEventListener('ended', resolve, { once:true });
+      video.addEventListener('error', () => reject(new Error(
+        uiLang==='ja' ? '\u518d\u751f\u4e2d\u306b\u30a8\u30e9\u30fc\u304c\u767a\u751f\u3057\u307e\u3057\u305f\u3002' : 'A playback error occurred during processing.'
+      )), { once:true });
+      const iv = setInterval(() => {
+        if (killed || video.ended) { clearInterval(iv); resolve(); }
+      }, 200);
+    });
+
+    flush(true);
+    await pending;
+    if (firstErr) throw firstErr;
+
+    proc.disconnect(); source.disconnect(); silent.disconnect();
+    await ctx.close();
+  } finally {
+    cleanupEl();
+  }
 }
 
 // Whisper (OpenAI / Groq)
@@ -747,28 +766,32 @@ async function go() {
   ['s1','s2','s3','s4'].forEach(id => step(id,''));
   try {
     const lang = document.getElementById('lang').value;
-    prog(5, t('progCompressing'));
-    const compressed = await compress(selFile);
-    if (killed) return cleanup();
-    step('s2','on');
-    prog(15, t('progSplitting'));
+    const targetSR = parseInt(document.getElementById('qual').value) || 0;
     const chunkSec = parseInt(document.getElementById('csec').value);
-    const chunks = compressed.pcm
-      ? chunkPCM(compressed.pcm, compressed.sampleRate, chunkSec)
-      : [{ raw:compressed.raw, timeOffset:0 }];
-    document.getElementById('cinfo').textContent += `  \u00b7  ${chunks.length} chunk${chunks.length!==1?'s':''}`;
-    step('s2','ok');
-    if (killed) return cleanup();
-    step('s3','on');
-    for (let i=0;i<chunks.length;i++) {
-      if (killed) break;
-      prog(15 + Math.round((i/chunks.length)*78), t('progTranscribing', i+1, chunks.length));
-      const wavBuf = chunks[i].pcm ? makePCM(chunks[i].pcm, compressed.sampleRate) : chunks[i].raw;
-      const segs = prov==='gemini'
-        ? await callGemini(wavBuf, chunks[i].timeOffset, apiKey, lang, i)
-        : await callWhisper(wavBuf, chunks[i].timeOffset, apiKey, lang, i);
-      segs.forEach(s => addSeg(s));
-    }
+    step('s1','ok'); step('s2','ok'); step('s3','on');
+    document.getElementById('cinfo').textContent = uiLang==='ja'
+      ? '\u30d5\u30a1\u30a4\u30eb\u3092\u958b\u3044\u3066\u3044\u307e\u3059\u2026'
+      : 'Opening file\u2026';
+    prog(2, t('progTranscribing', 1, '?'));
+
+    let estTotalChunks = null;
+    await streamCapture(
+      selFile, targetSR, chunkSec,
+      async (wavBuf, timeOffset, idx) => {
+        if (killed) return;
+        const n = estTotalChunks || (idx+1);
+        prog(Math.max(2, Math.round((timeOffset/((estTotalChunks||1)*chunkSec))*90)), t('progTranscribing', idx+1, n));
+        const segs = prov==='gemini'
+          ? await callGemini(wavBuf, timeOffset, apiKey, lang, idx)
+          : await callWhisper(wavBuf, timeOffset, apiKey, lang, idx);
+        segs.forEach(s => addSeg(s));
+      },
+      (frac, curT, dur) => {
+        if (!estTotalChunks) estTotalChunks = Math.max(1, Math.ceil(dur/chunkSec));
+        prog(2 + Math.round(frac*90), t('progTranscribing', Math.min(estTotalChunks, Math.floor(curT/chunkSec)+1), estTotalChunks));
+      }
+    );
+
     step('s3','ok'); step('s4','ok');
     prog(100, killed ? t('progStopped') : t('progDone'));
     document.getElementById('dbadge').textContent = killed ? t('badgeStopped') : t('badgeDone');
